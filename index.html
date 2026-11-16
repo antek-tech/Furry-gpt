@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FurryGPT - Mono Edition</title>
+    <style>
+        :root {
+            --bg-main: #121212;
+            --bg-panel: #1a1a1a;
+            --bg-element: #242424;
+            --border-color: #383838;
+            --text-main: #e0e0e0;
+            --text-muted: #888888;
+            --accent: #ffffff;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* MENU BOCZNE (Ukrywane pod 3 kreskami) */
+        aside {
+            width: 320px;
+            background-color: var(--bg-panel);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+            gap: 15px;
+            position: absolute;
+            height: 100%;
+            left: -320px;
+            transition: left 0.3s ease;
+            z-index: 100;
+        }
+
+        aside.open {
+            left: 0;
+        }
+
+        .aside-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .aside-header h2 {
+            margin: 0;
+            font-size: 1.2rem;
+            color: var(--accent);
+            letter-spacing: 1px;
+        }
+
+        /* GŁÓWNY KONTENER */
+        .main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100%;
+        }
+
+        /* NAGŁÓWEK */
+        header {
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .menu-btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            border-radius: 4px;
+        }
+        .menu-btn:hover {
+            background-color: var(--bg-element);
+        }
+
+        /* KONTENER CZATU / TREŚCI */
+        .content-area {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .msg {
+            padding: 12px 16px;
+            border-radius: 6px;
+            line-height: 1.5;
+            max-width: 80%;
+            word-break: break-word;
+            border: 1px solid var(--border-color);
+        }
+
+        .msg.user {
+            background-color: var(--bg-element);
+            align-self: flex-end;
+            border-color: #555;
+        }
+
+        .msg.assistant {
+            background-color: var(--bg-panel);
+            align-self: flex-start;
+        }
+
+        /* INPUT AREA */
+        .input-area {
+            padding: 15px 20px;
+            background-color: var(--bg-panel);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 10px;
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        textarea, input, select {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            border-radius: 4px;
+            font-family: inherit;
+            resize: none;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        textarea:focus, input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        button.action-btn {
+            background-color: var(--text-main);
+            color: var(--bg-main);
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        button.action-btn:hover {
+            opacity: 0.85;
+        }
+
+        button.secondary-btn {
+            background-color: transparent;
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button.secondary-btn:hover {
+            background-color: var(--bg-element);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* SEKCJA SKANOWANIA MODELI */
+        #modelScannerView {
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .model-card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- MENU BOCZNE (3 KRESKI) -->
+    <aside id="sidebar">
+        <div class="aside-header">
+            <h2>Ustawienia & Menu</h2>
+            <button class="menu-btn" onclick="toggleSidebar()">✕</button>
+        </div>
+
+        <div class="control-group">
+            <label>Klucz API Groq</label>
+            <input type="password" id="apiKeyInput" placeholder="gsk_..." onchange="zapiszUstawienia()">
+        </div>
+
+        <div class="control-group">
+            <label>Model AI</label>
+            <input type="text" id="modelInput" value="openai/gpt-oss-20b" onchange="zapiszUstawienia()">
+        </div>
+
+        <div class="control-group">
+            <label>Max Tokens</label>
+            <input type="number" id="maxTokensInput" value="400" onchange="zapiszUstawienia()">
+        </div>
+
+        <div class="control-group">
+            <label>Temperature</label>
+            <input type="number" step="0.1" id="tempInput" value="2.0" onchange="zapiszUstawienia()">
+        </div>
+
+        <hr style="border:0; border-top:1px solid var(--border-color); margin: 5px 0;">
+
+        <!-- PRZYCISKI IMPORTU / EKSPORTU -->
+        <div class="control-group">
+            <label>Zarządzanie konfiguracją</label>
+            <div class="btn-group">
+                <button class="secondary-btn" style="flex:1;" onclick="pobierzKonfig()">Pobierz</button>
+                <button class="secondary-btn" style="flex:1;" onclick="document.getElementById('importFile').click()">Wgraj</button>
+                <input type="file" id="importFile" style="display:none" accept=".json" onchange="wgrajKonfig(event)">
+            </div>
+        </div>
+
+        <!-- PRZYCISK SKANOWANIA MODELI -->
+        <button class="secondary-btn" onclick="pokazSkaner()">Skanowanie modeli</button>
+        <button class="secondary-btn" onclick="pokazCzat()">Powrót do czatu</button>
+
+        <div style="margin-top: auto;">
+            <button class="secondary-btn" style="width: 100%; border-color: #555;" onclick="wyczyscHistorie()">Wyczyść czat</button>
+        </div>
+    </aside>
+
+    <!-- GŁÓWNY INTERFEJS -->
+    <div class="main-container">
+        <header>
+            <button class="menu-btn" onclick="toggleSidebar()">≡</button>
+            <span id="headerTitle" style="font-weight: 600; letter-spacing: 0.5px;">FurryGPT [Mono]</span>
+        </header>
+
+        <!-- WIDOK CZATU -->
+        <div id="chatView" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
+            <div class="content-area" id="chatMessages">
+                <div class="msg assistant">
+                    *strzyże uszkami w szarym odcieniu* Cześć! Minimalistyczny tryb czarno-biały aktywowany. Otwórz menu pod trzema kreskami, aby skonfigurować klucz.
+                </div>
+            </div>
+            <div class="input-area">
+                <textarea id="userInput" placeholder="Napisz wiadomość... (Enter wysyła)" rows="1" onkeydown="sprawdzEnter(event)"></textarea>
+                <button class="action-btn" onclick="wyslijWiadomosc()">Wyślij</button>
+            </div>
+        </div>
+
+        <!-- WIDOK SKANOWANIA MODELI -->
+        <div id="modelScannerView" class="content-area">
+            <h3>Skanowanie dostępnych modeli</h3>
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Sprawdź aktywne modele dostępne dla Twojego klucza API Groq.</p>
+            <button class="action-btn" style="width: fit-content;" onclick="skanujModelem()">Rozpocznij skanowanie</button>
+            <div id="scannerResults" style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;"></div>
+        </div>
+    </div>
+
+    <script>
+        let messages = [];
+        let notatki = [];
+
+        window.onload = function() {
+            wczytajUstawienia();
+            wczytajHistorie();
+        };
+
+        function toggleSidebar() {
+            document.getElementById("sidebar").classList.toggle("open");
+        }
+
+        function pokazSkaner() {
+            document.getElementById("chatView").style.display = "none";
+            document.getElementById("modelScannerView").style.display = "flex";
+            document.getElementById("headerTitle").innerText = "Skanowanie modeli";
+            toggleSidebar();
+        }
+
+        function pokazCzat() {
+            document.getElementById("modelScannerView").style.display = "none";
+            document.getElementById("chatView").style.display = "flex";
+            document.getElementById("headerTitle").innerText = "FurryGPT [Mono]";
+            toggleSidebar();
+        }
+
+        function zapiszUstawienia() {
+            const config = {
+                apiKey: document.getElementById("apiKeyInput").value,
+                model: document.getElementById("modelInput").value,
+                maxTokens: document.getElementById("maxTokensInput").value,
+                temperature: document.getElementById("tempInput").value
+            };
+            localStorage.setItem("furrygpt_mono_config", JSON.stringify(config));
+        }
+
+        function wczytajUstawienia() {
+            const saved = localStorage.getItem("furrygpt_mono_config");
+            if (saved) {
+                try {
+                    const config = JSON.parse(saved);
+                    document.getElementById("apiKeyInput").value = config.apiKey || "";
+                    document.getElementById("modelInput").value = config.model || "openai/gpt-oss-20b";
+                    document.getElementById("maxTokensInput").value = config.maxTokens || 400;
+                    document.getElementById("tempInput").value = config.temperature || 2.0;
+                } catch(e) {}
+            }
+        }
+
+        /* POBIERZ I WGRAJ KONFIGURACJĘ */
+        function pobierzKonfig() {
+            const config = {
+                apiKey: document.getElementById("apiKeyInput").value,
+                model: document.getElementById("modelInput").value,
+                maxTokens: document.getElementById("maxTokensInput").value,
+                temperature: document.getElementById("tempInput").value
+            };
+            const blob = new Blob([JSON.stringify(config, null, 2)], {type: "application/json"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "furrygpt_config.json";
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function wgrajKonfig(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const config = JSON.parse(e.target.result);
+                    if(config.apiKey) document.getElementById("apiKeyInput").value = config.apiKey;
+                    if(config.model) document.getElementById("modelInput").value = config.model;
+                    if(config.maxTokens) document.getElementById("maxTokensInput").value = config.maxTokens;
+                    if(config.temperature) document.getElementById("tempInput").value = config.temperature;
+                    zapiszUstawienia();
+                    alert("Konfiguracja została wgrana pomyślnie!");
+                } catch(err) {
+                    alert("Błąd odczytu pliku JSON!");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        /* SKANOWANIE MODELI */
+        async function skanujModelem() {
+            const apiKey = document.getElementById("apiKeyInput").value.trim();
+            const resultsDiv = document.getElementById("scannerResults");
+            resultsDiv.innerHTML = "Skanowanie...";
+
+            if(!apiKey) {
+                resultsDiv.innerHTML = "Błąd: Brak klucza API w ustawieniach!";
+                return;
+            }
+
+            try {
+                const response = await fetch("https://api.groq.com/openai/v1/models", {
+                    method: "GET",
+                    headers: { "Authorization": `Bearer ${apiKey}` }
+                });
+
+                if(!response.ok) throw new Error("Błąd autoryzacji lub sieci");
+                const data = await response.json();
+                
+                resultsDiv.innerHTML = "";
+                if(data.data && data.data.length > 0) {
+                    data.data.forEach(m => {
+                        let card = document.createElement("div");
+                        card.className = "model-card";
+                        card.innerHTML = `<span>${m.id}</span> <button class="secondary-btn" onclick="wybierzModel('${m.id}')">Wybierz</button>`;
+                        resultsDiv.appendChild(card);
+                    });
+                } else {
+                    resultsDiv.innerHTML = "Brak dostępnych modeli.";
+                }
+            } catch(e) {
+                resultsDiv.innerHTML = "Błąd podczas pobierania modeli: " + e.message;
+            }
+        }
+
+        function wybierzModel(modelId) {
+            document.getElementById("modelInput").value = modelId;
+            zapiszUstawienia();
+            alert("Wybrano model: " + modelId);
+            pokazCzat();
+        }
+
+        /* OBSŁUGA CZATU I HISTORII */
+        function sprawdzEnter(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                wyslijWiadomosc();
+            }
+        }
+
+        async function wyslijWiadomosc() {
+            const apiKey = document.getElementById("apiKeyInput").value.trim();
+            const inputField = document.getElementById("userInput");
+            const text = inputField.value.trim();
+
+            if (!apiKey) {
+                alert("Wpisz najpierw klucz API w menu (pod trzema kreskami)!");
+                return;
+            }
+            if (!text) return;
+
+            inputField.value = "";
+            messages.push({ role: "user", content: text });
+            appendMessage("user", text);
+            saveHistory();
+
+            const maxTokens = parseInt(document.getElementById("maxTokensInput").value) || 400;
+            const temperature = parseFloat(document.getElementById("tempInput").value) || 2.0;
+            const model = document.getElementById("modelInput").value || "openai/gpt-oss-20b";
+
+            try {
+                const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${apiKey}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        model: model,
+                        messages: messages,
+                        temperature: temperature,
+                        max_tokens: maxTokens
+                    })
+                });
+
+                if (!response.ok) throw new Error(`Status ${response.status}`);
+
+                const data = await response.json();
+                let botResponse = data.choices[0].message.content;
+
+                messages.push({ role: "assistant", content: botResponse });
+                appendMessage("assistant", botResponse);
+                saveHistory();
+
+            } catch (error) {
+                alert("Błąd połączenia z API: " + error.message);
+            }
+        }
+
+        function appendMessage(role, text) {
+            const chatMessages = document.getElementById("chatMessages");
+            const msgDiv = document.createElement("div");
+            msgDiv.className = `msg ${role}`;
+            msgDiv.innerText = text;
+            chatMessages.appendChild(msgDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function saveHistory() {
+            localStorage.setItem("furrygpt_mono_history", JSON.stringify(messages));
+        }
+
+        function wczytajHistorie() {
+            const saved = localStorage.getItem("furrygpt_mono_history");
+            if (saved) {
+                try {
+                    messages = JSON.parse(saved);
+                    const chatMessages = document.getElementById("chatMessages");
+                    chatMessages.innerHTML = "";
+                    messages.forEach(m => appendMessage(m.role, m.content));
+                } catch(e) {}
+            }
+        }
+
+        function wyczyscHistorie() {
+            if(confirm("Usunąć całą historię czatu z pamięci przeglądarki?")) {
+                localStorage.removeItem("furrygpt_mono_history");
+                messages = [];
+                document.getElementById("chatMessages").innerHTML = "";
+            }
+        }
+    </script>
+</body>
+</html>
+
